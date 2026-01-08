@@ -1,0 +1,55 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'sdsadikullhock@gmail.com';
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Products & Config (Instant reflection logic)
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Global Store Settings (Marquee, Open/Close status)
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Banner Manager
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Orders Collection
+    match /orders/{orderId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userEmail == request.auth.token.email);
+      allow create: if isSignedIn() 
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.transactionId.size() >= 8
+                    && request.resource.data.userEmail == request.auth.token.email;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // User Control (Ban/Access list)
+    match /users/{userEmail} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.token.email == userEmail);
+      allow write: if isAdmin();
+    }
+    
+    // Notifications Collection
+    match /notifications/{notifId} {
+      allow read: if isSignedIn() && resource.data.userEmail == request.auth.token.email;
+      allow write: if isAdmin();
+    }
+  }
+}
