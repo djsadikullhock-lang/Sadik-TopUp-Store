@@ -10,14 +10,14 @@ export const StatusBadge: React.FC<{ status: Order['status'] }> = ({ status }) =
       text: 'text-amber-700',
       border: 'border-amber-200',
       icon: <Clock size={12} className="animate-pulse" />,
-      label: 'Processing'
+      label: 'Pending'
     },
     processing: {
       bg: 'bg-blue-50',
       text: 'text-blue-700',
       border: 'border-blue-200',
       icon: <Activity size={12} />,
-      label: 'In Review'
+      label: 'Processing'
     },
     completed: {
       bg: 'bg-emerald-50',

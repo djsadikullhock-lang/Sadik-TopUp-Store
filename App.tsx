@@ -4,7 +4,7 @@ import {
   CheckCircle2, Bell, LayoutGrid, ShoppingBag, CreditCard, UserCircle,
   Zap, Star, Filter, Calendar, ArrowRight, AlertOctagon, Activity,
   MapPin, History, Gamepad2, PlusSquare, LayoutList, CreditCard as CardIcon,
-  ChevronDown, Minus, Plus, MessageCircle, MessageSquare, Phone
+  ChevronDown, Minus, Plus, MessageCircle, MessageSquare, Phone, Info, AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ADMIN_EMAIL, PRODUCTS as INITIAL_PRODUCTS, PAYMENT_DETAILS, CATEGORIES, DEFAULT_SETTINGS, DEFAULT_BANNERS } from './constants';
@@ -46,10 +46,14 @@ const App: React.FC = () => {
     const stored = localStorage.getItem('sadik_orders');
     return stored ? JSON.parse(stored) : [];
   });
+  
   const [products, setProducts] = useState<Product[]>(() => {
     const stored = localStorage.getItem('sadik_products');
-    return stored ? JSON.parse(stored) : INITIAL_PRODUCTS;
+    const parsed = stored ? JSON.parse(stored) : [];
+    // Ensure default products are loaded if storage is empty/cleared
+    return parsed.length > 0 ? parsed : INITIAL_PRODUCTS;
   });
+
   const [settings, setSettings] = useState<StoreSettings>(() => {
     const stored = localStorage.getItem('sadik_settings');
     return stored ? JSON.parse(stored) : DEFAULT_SETTINGS;
@@ -69,6 +73,8 @@ const App: React.FC = () => {
   const [isAdminManualOrderOpen, setIsAdminManualOrderOpen] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showOrderSuccess, setShowOrderSuccess] = useState(false);
+  const [lastOrder, setLastOrder] = useState<Order | null>(null);
 
   const [orderPlayerId, setOrderPlayerId] = useState('');
   const [orderTrxId, setOrderTrxId] = useState('');
@@ -157,7 +163,8 @@ const App: React.FC = () => {
 
       setOrderPlayerId('');
       setOrderTrxId('');
-      alert(`Order Successful! Your Order ID is: ${newOrder.id}`);
+      setLastOrder(newOrder);
+      setShowOrderSuccess(true);
     } catch (error) {
       setSubmissionError("Submission Failed: A network error occurred.");
     } finally {
@@ -179,6 +186,12 @@ const App: React.FC = () => {
         EmailService.getInvoiceTemplate(order)
       );
       setAppUsers(appUsers.map(u => u.email === order.userEmail ? { ...u, totalSpent: u.totalSpent + order.price } : u));
+    } else if (status === 'cancelled') {
+      EmailService.sendEmail(
+        order.userEmail,
+        `Order Cancelled: #${orderId}`,
+        EmailService.getCancellationTemplate(order)
+      );
     }
   };
 
@@ -344,13 +357,29 @@ const App: React.FC = () => {
                              Add to basket
                            </button>
                         </div>
-                        <button 
-                          disabled={!settings.isStoreOpen || !selectedProduct || !orderPlayerId} 
-                          onClick={() => setShowConfirmation(true)} 
-                          className={`w-full flex-1 py-4 rounded-xl font-black uppercase text-xs tracking-[0.2em] transition-all shadow-xl ${settings.isStoreOpen && selectedProduct && orderPlayerId ? 'bg-orange-400 text-white hover:bg-orange-500 shadow-orange-500/20' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-                        >
-                          Buy now
-                        </button>
+                        
+                        <div className="w-full flex-1">
+                          <button 
+                            disabled={!settings.isStoreOpen || !selectedProduct || !orderPlayerId} 
+                            onClick={() => {
+                              if (!user) {
+                                setIsLoginModalOpen(true);
+                                return;
+                              }
+                              setShowConfirmation(true);
+                            }} 
+                            className={`w-full py-4 rounded-xl font-black uppercase text-xs tracking-[0.2em] transition-all shadow-xl ${settings.isStoreOpen && selectedProduct && orderPlayerId ? 'bg-orange-400 text-white hover:bg-orange-500 shadow-orange-500/20' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                          >
+                            {user ? 'Buy now' : 'Login to Buy'}
+                          </button>
+                          {!user && (
+                            <div className="mt-2 text-center">
+                              <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest flex items-center justify-center gap-1">
+                                <AlertOctagon size={12} /> Login required to place order
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -400,155 +429,239 @@ const App: React.FC = () => {
                     <Phone size={18} />
                   </div>
                   <div className="flex-1">
-                    <p className="text-xs font-black text-gray-900">WhatsApp</p>
-                    <p className="text-[10px] text-gray-400 font-bold">Direct Assistance</p>
+                    <p className="text-xs font-black text-gray-900">WhatsApp Support</p>
+                    <p className="text-[10px] text-gray-400 font-bold">Average Reply: 2 mins</p>
                   </div>
                 </a>
-                <button 
-                  onClick={() => { (window as any).Tawk_API?.toggle(); setIsSupportOpen(false); }}
-                  className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-blue-50 transition-colors group"
-                >
-                  <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
-                    <MessageSquare size={18} />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className="text-xs font-black text-gray-900">Live Chat</p>
-                    <p className="text-[10px] text-gray-400 font-bold">Talk to Agent</p>
-                  </div>
-                </button>
-              </div>
-              <div className="bg-gray-50 p-4 text-center">
-                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Available 8AM - 11PM</p>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+        
+        <button 
           onClick={() => setIsSupportOpen(!isSupportOpen)}
-          className={`w-16 h-16 rounded-3xl flex items-center justify-center shadow-2xl transition-colors ${isSupportOpen ? 'bg-gray-900 text-white' : 'bg-orange-500 text-white shadow-orange-500/30'}`}
+          className="bg-orange-500 text-white p-5 rounded-full shadow-2xl hover:scale-110 active:scale-90 transition-all group"
         >
-          {isSupportOpen ? <X size={28} /> : (
-            <div className="relative">
-              <MessageCircle size={28} />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white animate-pulse" />
-            </div>
-          )}
-        </motion.button>
+          <MessageCircle size={28} className="group-hover:rotate-12 transition-transform" />
+        </button>
       </div>
-
-      {/* Confirmation Modal */}
-      <AnimatePresence>
-        {showConfirmation && selectedProduct && (
-          <motion.div 
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
-            variants={backdropVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-          >
-             <motion.div 
-                variants={modalVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto"
-              >
-                <h3 className="text-2xl font-black text-gray-900 mb-2">Complete Payment</h3>
-                <div className="space-y-6 mb-8">
-                   <div className="grid grid-cols-3 gap-3">
-                      {Object.entries(PAYMENT_DETAILS).map(([key, data]) => (
-                        <button key={key} onClick={() => setOrderPaymentMethod(key as PaymentMethod)} className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${orderPaymentMethod === key ? 'border-orange-500 bg-orange-50' : 'border-gray-100'}`}>
-                           <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white font-black bg-orange-500`}>{key[0].toUpperCase()}</div>
-                           <span className="text-[8px] font-black uppercase tracking-widest">{data.name.split(' ')[0]}</span>
-                        </button>
-                      ))}
-                   </div>
-                   <div className="bg-gray-900 p-6 rounded-2xl text-white">
-                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Send Money to</p>
-                      <p className="text-xl font-black tracking-wider text-orange-400">{PAYMENT_DETAILS[orderPaymentMethod].number}</p>
-                      <p className="text-[11px] text-white/70 mt-2">"{PAYMENT_DETAILS[orderPaymentMethod].instructions}"</p>
-                   </div>
-                   <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Transaction ID</label>
-                      <input type="text" placeholder="Paste TrxID here" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-mono font-bold focus:border-orange-500 outline-none uppercase" value={orderTrxId} onChange={(e) => setOrderTrxId(e.target.value)} />
-                   </div>
-                   <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 flex justify-between items-center"><span className="text-[10px] font-black text-orange-900 uppercase tracking-widest">Payable</span><span className="text-xl font-black text-orange-600">৳{selectedProduct.price * quantity}</span></div>
-                </div>
-                {submissionError && <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex gap-3 items-start"><AlertOctagon className="text-rose-500 shrink-0" size={20} /><p className="text-xs font-bold text-rose-700">{submissionError}</p></div>}
-                <div className="flex gap-3"><button onClick={() => setShowConfirmation(false)} className="flex-1 bg-gray-100 py-4 rounded-xl font-black uppercase text-xs tracking-widest">Cancel</button><button disabled={isSubmitting} onClick={() => confirmAndCreateOrder()} className={`flex-[1.5] py-4 rounded-xl font-black uppercase text-xs tracking-widest ${isSubmitting ? 'bg-gray-400' : 'bg-gray-900 text-white hover:bg-orange-600'}`}>{isSubmitting ? 'Verifying...' : 'Submit'}</button></div>
-             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Manual Admin Order Modal */}
-      <AnimatePresence>
-        {isAdminManualOrderOpen && selectedProduct && (
-          <motion.div 
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
-            variants={backdropVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-          >
-             <motion.div 
-                variants={modalVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl"
-              >
-                <h3 className="text-2xl font-black text-gray-900 mb-6 flex items-center gap-3"><Zap className="text-orange-500"/> Admin Manual Delivery</h3>
-                <div className="space-y-6">
-                   <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Pack</p><p className="text-lg font-black text-gray-900">{selectedProduct.name}</p></div>
-                   <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Target Player ID</label><input type="text" placeholder="Target UID" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-5 py-4 text-sm font-bold focus:border-orange-500 outline-none" value={orderPlayerId} onChange={(e) => setOrderPlayerId(e.target.value)} /></div>
-                   <div className="flex gap-4"><button onClick={() => setIsAdminManualOrderOpen(false)} className="flex-1 bg-gray-100 py-4 rounded-xl font-black uppercase text-xs tracking-widest">Discard</button><button onClick={() => confirmAndCreateOrder(true)} className="flex-[1.5] bg-orange-500 text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-orange-600">Deliver Now</button></div>
-                </div>
-             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Login Modal */}
       <AnimatePresence>
         {isLoginModalOpen && (
           <motion.div 
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
-            variants={backdropVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           >
-             <motion.form 
-                variants={modalVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                onSubmit={handleLogin} 
-                className="bg-white rounded-[3rem] p-12 max-w-sm w-full shadow-2xl relative overflow-hidden"
-              >
-                <div className="relative z-10">
-                  <div className="w-20 h-20 bg-orange-500 rounded-3xl flex items-center justify-center text-white mb-8 shadow-2xl shadow-orange-500/30"><UserCircle size={40} /></div>
-                  <h3 className="text-3xl font-black text-gray-900 mb-2">Member Login</h3>
-                  <p className="text-[10px] text-gray-400 mb-10 font-black uppercase tracking-widest">Access your account</p>
-                  <div className="space-y-6">
-                    <input type="email" required placeholder="Gmail Account" className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-6 py-5 text-sm font-bold focus:border-orange-500 outline-none" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
-                    <button type="submit" className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl hover:bg-orange-600 transition-all">Secure Access</button>
-                    <button type="button" onClick={() => setIsLoginModalOpen(false)} className="w-full text-[10px] font-black text-gray-300 uppercase tracking-widest hover:text-gray-900 py-2">Return</button>
+             {/* Modal Content */}
+             <motion.div 
+               variants={modalVariants} initial="initial" animate="animate" exit="exit"
+               className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl relative overflow-hidden"
+             >
+                <button onClick={() => setIsLoginModalOpen(false)} className="absolute top-6 right-6 p-2 bg-gray-50 rounded-full text-gray-400 hover:bg-gray-100"><X size={20}/></button>
+                
+                <div className="text-center space-y-4 mb-8">
+                  <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto text-orange-500 mb-2">
+                    <UserCircle size={40} />
+                  </div>
+                  <h3 className="text-2xl font-black text-gray-900">Welcome Back</h3>
+                  <p className="text-gray-500 text-sm font-medium">Please enter your email to continue. We use this to track your orders.</p>
+                </div>
+
+                <form onSubmit={handleLogin} className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Email Address</label>
+                    <input 
+                      type="email" 
+                      required
+                      placeholder="name@gmail.com"
+                      className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-6 py-4 font-bold text-gray-900 focus:border-orange-500 outline-none transition-all"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                    />
+                  </div>
+                  <button type="submit" className="w-full bg-gray-900 text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs hover:bg-orange-500 transition-all shadow-xl">
+                    Continue
+                  </button>
+                </form>
+             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Order Confirmation Modal */}
+      <AnimatePresence>
+        {showConfirmation && selectedProduct && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div 
+               variants={modalVariants} initial="initial" animate="animate" exit="exit"
+               className="bg-white rounded-[2.5rem] p-10 max-w-xl w-full shadow-2xl relative overflow-hidden max-h-[90vh] overflow-y-auto"
+            >
+              <button onClick={() => setShowConfirmation(false)} className="absolute top-6 right-6 p-2 bg-gray-50 rounded-full text-gray-400 hover:bg-gray-100"><X size={20}/></button>
+              
+              <div className="space-y-8">
+                <div>
+                  <h3 className="text-2xl font-black text-gray-900">Checkout</h3>
+                  <p className="text-gray-400 text-sm font-bold mt-1">Complete your purchase</p>
+                </div>
+
+                <div className="bg-orange-50 p-6 rounded-2xl flex items-center justify-between border border-orange-100">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest text-orange-400">Total Amount</p>
+                    <p className="text-3xl font-black text-orange-600">৳{selectedProduct.price * quantity}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-black uppercase tracking-widest text-orange-400">Package</p>
+                    <p className="text-lg font-black text-gray-900">{selectedProduct.name} x{quantity}</p>
                   </div>
                 </div>
-             </motion.form>
+
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Select Payment Method</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {(Object.keys(PAYMENT_DETAILS) as PaymentMethod[]).map((method) => (
+                      <button 
+                        key={method}
+                        onClick={() => setOrderPaymentMethod(method)}
+                        className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${orderPaymentMethod === method ? 'border-orange-500 bg-orange-50' : 'border-gray-100 bg-white grayscale opacity-70 hover:grayscale-0 hover:opacity-100'}`}
+                      >
+                         <img src={PAYMENT_DETAILS[method].logo} className="h-8 object-contain" />
+                         <span className="text-[10px] font-black uppercase tracking-widest">{method}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                        <img src={PAYMENT_DETAILS[orderPaymentMethod].logo} className="w-8" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Send Money To</p>
+                        <p className="text-lg font-black text-gray-900 tracking-wider select-all">{PAYMENT_DETAILS[orderPaymentMethod].number}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 font-medium leading-relaxed bg-white p-4 rounded-xl border border-gray-100">
+                      {PAYMENT_DETAILS[orderPaymentMethod].instructions}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Transaction ID (TrxID)</label>
+                   <input 
+                      type="text" 
+                      placeholder="e.g. 9G7F42K..."
+                      className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-6 py-4 font-bold text-gray-900 focus:border-orange-500 outline-none transition-all uppercase placeholder:normal-case"
+                      value={orderTrxId}
+                      onChange={(e) => setOrderTrxId(e.target.value)}
+                   />
+                </div>
+                
+                {submissionError && (
+                  <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3 text-rose-600">
+                    <AlertTriangle size={18} />
+                    <p className="text-xs font-bold">{submissionError}</p>
+                  </div>
+                )}
+
+                <button 
+                  onClick={() => confirmAndCreateOrder()} 
+                  disabled={isSubmitting || !orderTrxId}
+                  className={`w-full py-4 rounded-xl font-black uppercase tracking-widest text-xs transition-all shadow-xl ${isSubmitting || !orderTrxId ? 'bg-gray-200 text-gray-400' : 'bg-gray-900 text-white hover:bg-orange-500'}`}
+                >
+                  {isSubmitting ? 'Verifying...' : 'Submit Order'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Admin Manual Order Modal */}
+      <AnimatePresence>
+         {isAdminManualOrderOpen && selectedProduct && (
+           <motion.div 
+             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+             className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+           >
+             <motion.div 
+               variants={modalVariants} initial="initial" animate="animate" exit="exit"
+               className="bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl relative"
+             >
+               <button onClick={() => setIsAdminManualOrderOpen(false)} className="absolute top-6 right-6 p-2 bg-gray-50 rounded-full text-gray-400 hover:bg-gray-100"><X size={20}/></button>
+               <h3 className="text-xl font-black text-gray-900 mb-6">Manual Order Entry</h3>
+               
+               <div className="space-y-4">
+                 <div>
+                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Player ID</label>
+                   <input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-4 py-3 font-bold" value={orderPlayerId} onChange={(e) => setOrderPlayerId(e.target.value)} placeholder="UID" />
+                 </div>
+                 <div>
+                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Internal TrxID</label>
+                   <input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-4 py-3 font-bold text-gray-500" value={orderTrxId} readOnly />
+                 </div>
+                 <button onClick={() => confirmAndCreateOrder(true)} className="w-full bg-emerald-500 text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20">
+                    Create & Complete
+                 </button>
+               </div>
+             </motion.div>
+           </motion.div>
+         )}
+      </AnimatePresence>
+
+      {/* Order Success Modal */}
+      <AnimatePresence>
+        {showOrderSuccess && lastOrder && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+             <motion.div 
+               variants={modalVariants} initial="initial" animate="animate" exit="exit"
+               className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl relative text-center overflow-hidden"
+             >
+                <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500">
+                  <CheckCircle2 size={40} />
+                </div>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">Order Placed!</h3>
+                <p className="text-gray-500 text-sm font-medium mb-8">Your order has been received successfully.</p>
+                
+                <div className="bg-gray-50 rounded-2xl p-6 mb-8 text-left space-y-3">
+                   <div className="flex justify-between text-sm">
+                      <span className="text-gray-400 font-bold">Order ID</span>
+                      <span className="font-black text-gray-900">{lastOrder.id}</span>
+                   </div>
+                   <div className="flex justify-between text-sm">
+                      <span className="text-gray-400 font-bold">Product</span>
+                      <span className="font-black text-gray-900">{lastOrder.productName}</span>
+                   </div>
+                   <div className="flex justify-between text-sm">
+                      <span className="text-gray-400 font-bold">Amount</span>
+                      <span className="font-black text-orange-600">৳{lastOrder.price}</span>
+                   </div>
+                   <div className="flex justify-between text-sm">
+                      <span className="text-gray-400 font-bold">Player ID</span>
+                      <span className="font-black text-blue-600">{lastOrder.playerId}</span>
+                   </div>
+                </div>
+
+                <div className="space-y-3">
+                  <button onClick={() => { setShowOrderSuccess(false); setCurrentPage('order-tracker'); }} className="w-full bg-gray-900 text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs hover:bg-orange-500 transition-all shadow-xl">
+                    Track Order
+                  </button>
+                  <button onClick={() => setShowOrderSuccess(false)} className="w-full bg-transparent text-gray-400 py-2 rounded-xl font-black uppercase tracking-widest text-[10px] hover:text-gray-900 transition-all">
+                    Close
+                  </button>
+                </div>
+             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
   );
 };
-
 export default App;

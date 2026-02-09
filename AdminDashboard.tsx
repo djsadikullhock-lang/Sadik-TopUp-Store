@@ -103,11 +103,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <select className="px-6 py-4 bg-gray-50 rounded-2xl text-sm font-black" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)}>
                     <option value="all">Global View</option>
                     <option value="pending">Pending</option>
+                    <option value="processing">Processing</option>
                     <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
                   </select>
                 </div>
                 <div className="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-sm">
                   <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-50 border-b border-gray-100">
+                      <tr>
+                        <th className="px-8 py-4 font-black text-[10px] text-gray-400 uppercase tracking-widest">Player Info</th>
+                        <th className="px-8 py-4 font-black text-[10px] text-gray-400 uppercase tracking-widest">Product</th>
+                        <th className="px-8 py-4 font-black text-[10px] text-gray-400 uppercase tracking-widest">Transaction</th>
+                        <th className="px-8 py-4 font-black text-[10px] text-gray-400 uppercase tracking-widest">Amount</th>
+                        <th className="px-8 py-4 font-black text-[10px] text-gray-400 uppercase tracking-widest">Status</th>
+                        <th className="px-8 py-4 font-black text-[10px] text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                      </tr>
+                    </thead>
                     <tbody className="divide-y divide-gray-50">
                       <AnimatePresence initial={false}>
                         {filteredOrders.map(o => (
@@ -120,18 +132,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             className="hover:bg-gray-50 transition-colors group"
                           >
                             <td className="px-8 py-6 font-black text-blue-600">UID: {o.playerId}</td>
-                            <td className="px-8 py-6 font-mono font-bold">{o.transactionId}</td>
+                            <td className="px-8 py-6">
+                              <span className="font-bold text-gray-900">{o.productName}</span>
+                            </td>
+                            <td className="px-8 py-6 font-mono font-bold text-gray-600">{o.transactionId}</td>
                             <td className="px-8 py-6 font-black text-orange-600">৳{o.price}</td>
                             <td className="px-8 py-6"><StatusBadge status={o.status} /></td>
                             <td className="px-8 py-6 text-right space-x-2">
-                              {o.status === 'pending' && <button onClick={() => onUpdateStatus(o.id, 'completed')} className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg hover:scale-110 transition-all"><CheckCircle2 size={18}/></button>}
-                              <button onClick={() => onDeleteOrder(o.id)} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all"><Trash2 size={18}/></button>
+                              {o.status === 'pending' && <button onClick={() => onUpdateStatus(o.id, 'processing')} className="p-3 bg-blue-500 text-white rounded-xl shadow-lg hover:scale-110 transition-all" title="Mark Processing"><Activity size={18}/></button>}
+                              {o.status === 'processing' && <button onClick={() => onUpdateStatus(o.id, 'completed')} className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg hover:scale-110 transition-all" title="Complete Order"><CheckCircle2 size={18}/></button>}
+                              {o.status === 'pending' && <button onClick={() => onUpdateStatus(o.id, 'completed')} className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg hover:scale-110 transition-all" title="Complete Immediately"><CheckCircle2 size={18}/></button>}
+                              {['pending', 'processing'].includes(o.status) && (
+                                <button onClick={() => onUpdateStatus(o.id, 'cancelled')} className="p-3 bg-amber-50 text-amber-600 rounded-xl shadow-sm hover:bg-amber-500 hover:text-white transition-all" title="Cancel Order"><XCircle size={18}/></button>
+                              )}
+                              <button onClick={() => onDeleteOrder(o.id)} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all" title="Delete Order"><Trash2 size={18}/></button>
                             </td>
                           </motion.tr>
                         ))}
                       </AnimatePresence>
                     </tbody>
                   </table>
+                  
+                  {filteredOrders.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                       <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-300">
+                          <Search size={24} />
+                       </div>
+                       <p className="text-gray-900 font-bold text-sm">No orders found</p>
+                       <p className="text-gray-400 text-xs mt-1">Try adjusting your search or filters</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

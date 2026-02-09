@@ -117,6 +117,34 @@ export const EmailService = {
   },
 
   /**
+   * Generates the HTML for Cancelled Orders
+   */
+  getCancellationTemplate(order: Order): string {
+    return `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 12px; overflow: hidden; background-color: #fff;">
+        <div style="background: #ef4444; color: white; padding: 30px; text-align: center;">
+          <h1 style="margin: 0; font-size: 28px; letter-spacing: -1px;">SADIK STORE</h1>
+          <p style="margin: 10px 0 0; opacity: 0.9;">Order Update</p>
+        </div>
+        <div style="padding: 40px; line-height: 1.6; color: #374151;">
+          <h2 style="color: #ef4444; margin-top: 0;">Order Cancelled</h2>
+          <p>Hello,</p>
+          <p>We regret to inform you that your order <strong>#${order.id}</strong> has been cancelled.</p>
+          
+          <div style="background: #fef2f2; border: 1px solid #fee2e2; padding: 20px; border-radius: 12px; margin: 25px 0;">
+            <p style="margin: 0; color: #b91c1c; font-size: 14px;"><strong>Reason:</strong> Payment verification failed or Invalid Player ID.</p>
+          </div>
+          
+          <p style="font-size: 14px; color: #6b7280;">If you believe this is an error, please contact our support on WhatsApp with your Transaction ID.</p>
+        </div>
+        <div style="background: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #eee;">
+          <p style="font-size: 11px; color: #9ca3af; margin: 0; text-transform: uppercase; letter-spacing: 1px;">© 2025 Sadik Top-Up Store.</p>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
    * Mock function to simulate email delivery.
    * Integration with Nodemailer or Firebase Cloud Functions would happen here.
    */

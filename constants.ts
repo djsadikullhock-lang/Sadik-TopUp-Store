@@ -6,7 +6,7 @@ export const ADMIN_EMAIL = 'sdsadikullhock@gmail.com';
 export const DEFAULT_SETTINGS: StoreSettings = {
   noticeMarquee: 'সার্ভিস চালু: সকাল ৮ টা থেকে রাত ১১ টা পর্যন্ত। যে কোনো সমস্যায় হোয়াটসঅ্যাপে যোগাযোগ করুন।',
   isStoreOpen: true,
-  supportWhatsApp: '8801401788594'
+  supportWhatsApp: '8801759337413'
 };
 
 export const DEFAULT_BANNERS: Banner[] = [
@@ -71,17 +71,20 @@ export const PRODUCTS: Product[] = [
 export const PAYMENT_DETAILS = {
   bkash: {
     name: 'bKash (Personal)',
-    number: '01401788594',
+    number: '01759337413',
+    logo: 'https://raw.githubusercontent.com/atikur-rahman-dev/payment-gateway-logos/main/bkash.png',
     instructions: 'Go to your bKash app, select "Send Money", enter our number, and pay the exact amount. Then copy the Transaction ID.'
   },
   nagad: {
     name: 'Nagad (Personal)',
-    number: '01401788594',
+    number: '01759337413',
+    logo: 'https://raw.githubusercontent.com/atikur-rahman-dev/payment-gateway-logos/main/nagad.png',
     instructions: 'Use Nagad "Send Money" to our number. Enter amount and PIN. Paste the Transaction ID here after successful payment.'
   },
   rocket: {
     name: 'Rocket (Personal)',
-    number: '01401788594',
+    number: '01759337413',
+    logo: 'https://raw.githubusercontent.com/atikur-rahman-dev/payment-gateway-logos/main/rocket.png',
     instructions: 'Send money to our Rocket number. Keep the 10-digit Transaction ID ready to submit.'
   }
 };
